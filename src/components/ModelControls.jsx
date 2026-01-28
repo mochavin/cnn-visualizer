@@ -83,9 +83,6 @@ export default function ModelControls({ model, onSave, onLoad, modelSource, mode
     <div className="bg-gray-800 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-          </svg>
           Model I/O
         </h2>
         <InfoTooltip 
@@ -97,18 +94,12 @@ export default function ModelControls({ model, onSave, onLoad, modelSource, mode
       {/* Success/Error messages */}
       {success && (
         <div className="mb-3 px-3 py-2 bg-green-900/50 border border-green-700 rounded-lg text-sm text-green-400 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
           {success}
         </div>
       )}
       
       {error && (
         <div className="mb-3 px-3 py-2 bg-red-900/50 border border-red-700 rounded-lg text-sm text-red-400 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
           {error}
         </div>
       )}
@@ -128,12 +119,7 @@ export default function ModelControls({ model, onSave, onLoad, modelSource, mode
                 Downloading...
               </>
             ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Model
-              </>
+              'Download Model'
             )}
           </button>
           {!model && (
@@ -187,12 +173,7 @@ export default function ModelControls({ model, onSave, onLoad, modelSource, mode
                   Loading...
                 </>
               ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Load Model
-                </>
+                'Load Model'
               )}
             </button>
           </div>

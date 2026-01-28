@@ -17,7 +17,11 @@ export default function TrainingPanel({
   onTrain,
   onStop,
   onPause,
-  onInitModel
+  onInitModel,
+  onSaveTrainedModel,
+  userTrainedModel,
+  trainedEpochs,
+  showSaveSuccess
 }) {
   const [epochs, setEpochs] = useState(5);
   const [batchSize, setBatchSize] = useState(32);
@@ -53,14 +57,16 @@ export default function TrainingPanel({
   };
   
   const handleStartTraining = async () => {
+    let activeModel = model;
     if (!model) {
-      onInitModel(learningRate);
+      activeModel = onInitModel(learningRate);
     }
     
     await onTrain({
       epochs,
       batchSize,
-      learningRate
+      learningRate,
+      modelOverride: activeModel
     });
   };
   
@@ -76,10 +82,7 @@ export default function TrainingPanel({
   return (
     <div className="bg-gray-800 rounded-xl p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+        <h2 className="text-lg font-semibold text-white">
           Training
         </h2>
         <InfoTooltip 
@@ -123,12 +126,7 @@ export default function TrainingPanel({
                   Loading...
                 </>
               ) : dataLoaded ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Loaded
-                </>
+                'Loaded'
               ) : (
                 'Load Data'
               )}
@@ -146,10 +144,7 @@ export default function TrainingPanel({
         ) : null}
         
         {dataLoaded && (
-          <p className="text-xs text-green-400 flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+          <p className="text-xs text-green-400">
             {useFullDataset ? 'Full MNIST dataset (60k images)' : 'Sample dataset (500 images)'} loaded
           </p>
         )}
@@ -227,9 +222,6 @@ export default function TrainingPanel({
               disabled={!dataLoaded}
               className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-              </svg>
               {model ? 'Continue Training' : 'Start Training'}
             </button>
           </DisabledTooltip>
@@ -239,34 +231,34 @@ export default function TrainingPanel({
               onClick={onPause}
               className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              {isPaused ? (
-                <>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                  </svg>
-                  Resume
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
-                  </svg>
-                  Pause
-                </>
-              )}
+              {isPaused ? 'Resume' : 'Pause'}
             </button>
             <button
               onClick={onStop}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5.75 3A2.75 2.75 0 003 5.75v8.5A2.75 2.75 0 005.75 17h8.5A2.75 2.75 0 0017 14.25v-8.5A2.75 2.75 0 0014.25 3h-8.5z" />
-              </svg>
               Stop
             </button>
           </>
         )}
       </div>
+
+      {/* Relocated Save Button */}
+      {trainedEpochs > 0 && !userTrainedModel && !isTraining && (
+        <div className="pt-2 border-t border-gray-700">
+          <button
+            onClick={onSaveTrainedModel}
+            className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            Save as Active Model
+          </button>
+          {showSaveSuccess && (
+            <div className="mt-2 text-xs text-green-400 text-center animate-fade-in">
+              Model saved to selection list!
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Training Progress */}
       {isTraining && (

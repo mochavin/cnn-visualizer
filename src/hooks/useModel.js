@@ -71,16 +71,19 @@ export function useModel() {
       learningRate = 0.001,
       validationSplit = 0.1,
       onEpochEnd,
-      onBatchEnd
+      onBatchEnd,
+      modelOverride = null
     } = options;
     
-    if (!model || !dataRef.current) {
+    const activeModel = modelOverride || model;
+    
+    if (!activeModel || !dataRef.current) {
       console.error('Model or data not loaded');
       return;
     }
     
     // Recompile with new learning rate
-    compileModel(model, learningRate);
+    compileModel(activeModel, learningRate);
     
     setIsTraining(true);
     setIsPaused(false);
@@ -116,7 +119,7 @@ export function useModel() {
         
         const { images, labels } = getBatch(trainImages, trainLabels, batchSize, batch);
         
-        const result = await model.trainOnBatch(images, labels);
+        const result = await activeModel.trainOnBatch(images, labels);
         const batchLoss = Array.isArray(result) ? result[0] : result;
         const batchAcc = Array.isArray(result) ? result[1] : 0;
         
@@ -149,7 +152,7 @@ export function useModel() {
       if (stopTrainingRef.current) break;
       
       // Calculate validation metrics
-      const valResult = model.evaluate(testImages, testLabels);
+      const valResult = activeModel.evaluate(testImages, testLabels);
       const valLoss = (await valResult[0].data())[0];
       const valAcc = (await valResult[1].data())[0];
       valResult[0].dispose();

@@ -8,10 +8,7 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
     return (
       <div className="bg-gray-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
+          <h2 className="text-lg font-semibold text-white">
             Network Architecture
           </h2>
           <InfoTooltip 
@@ -26,12 +23,12 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
   
   const getLayerColor = (type) => {
     switch (type) {
-      case 'Conv2D': return 'bg-blue-600 border-blue-400 hover:bg-blue-500';
-      case 'MaxPooling2D': return 'bg-purple-600 border-purple-400 hover:bg-purple-500';
-      case 'Flatten': return 'bg-yellow-600 border-yellow-400 hover:bg-yellow-500';
-      case 'Dense': return 'bg-green-600 border-green-400 hover:bg-green-500';
-      case 'Dropout': return 'bg-red-600 border-red-400 hover:bg-red-500';
-      default: return 'bg-gray-600 border-gray-400 hover:bg-gray-500';
+      case 'Conv2D': return 'bg-blue-500 border-blue-400 hover:bg-blue-500';
+      case 'MaxPooling2D': return 'bg-purple-500 border-purple-400 hover:bg-purple-500';
+      case 'Flatten': return 'bg-yellow-500 border-yellow-400 hover:bg-yellow-500';
+      case 'Dense': return 'bg-green-500 border-green-400 hover:bg-green-500';
+      case 'Dropout': return 'bg-red-500 border-red-400 hover:bg-red-500';
+      default: return 'bg-gray-500 border-gray-400 hover:bg-gray-500';
     }
   };
   
@@ -170,10 +167,7 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
   return (
     <div className="bg-gray-800 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-          </svg>
+        <h2 className="text-lg font-semibold text-white">
           Network Architecture
         </h2>
         <div className="flex items-center gap-2">
@@ -194,9 +188,6 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
           <div className="text-xs text-gray-400">28 x 28 x 1</div>
         </div>
         <div className="w-0.5 h-4 bg-gray-600" />
-        <svg className="w-3 h-3 text-gray-600 -mt-1" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10 14l-5-5h10l-5 5z" />
-        </svg>
       </div>
       
       {/* Layers */}
@@ -215,7 +206,6 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
                 onMouseLeave={() => setHoveredLayer(null)}
               >
                 <div className="flex items-center gap-2">
-                  {getLayerIcon(layer.type)}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white truncate">{layer.name}</div>
                     <div className="text-xs text-gray-200 opacity-75">{layer.type}</div>
@@ -251,12 +241,7 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
               )}
               
               {index < modelSummary.length - 1 && (
-                <>
-                  <div className="w-0.5 h-3 bg-gray-600" />
-                  <svg className="w-3 h-3 text-gray-600 -mt-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 14l-5-5h10l-5 5z" />
-                  </svg>
-                </>
+                <div className="w-0.5 h-3 bg-gray-600" />
               )}
             </div>
           );
@@ -266,9 +251,6 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
       {/* Output */}
       <div className="flex flex-col items-center mt-2">
         <div className="w-0.5 h-4 bg-gray-600" />
-        <svg className="w-3 h-3 text-gray-600 -mt-1" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10 14l-5-5h10l-5 5z" />
-        </svg>
         <div className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400 rounded-lg text-center mt-1">
           <div className="text-sm font-medium text-white">Output</div>
           <div className="text-xs text-green-200">10 classes (digits 0-9)</div>
