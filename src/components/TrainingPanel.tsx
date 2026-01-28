@@ -1,8 +1,30 @@
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import * as tf from '@tensorflow/tfjs';
 import Spinner from './ui/Spinner';
 import InfoTooltip from './ui/InfoTooltip';
 import DisabledTooltip from './ui/DisabledTooltip';
+import { TrainingProgress, TrainingHistory } from '../hooks/useModel';
+
+interface TrainingPanelProps {
+  model: tf.LayersModel | null;
+  isTraining: boolean;
+  isPaused: boolean;
+  trainingProgress: TrainingProgress;
+  trainingHistory: TrainingHistory;
+  dataLoaded: boolean;
+  dataLoadProgress: number;
+  useFullDataset: boolean;
+  onLoadData: (useFull: boolean) => Promise<any>;
+  onTrain: (options: any) => Promise<any>;
+  onStop: () => void;
+  onPause: () => void;
+  onInitModel: (learningRate: number) => tf.LayersModel;
+  onSaveTrainedModel: () => void;
+  userTrainedModel: boolean | null;
+  trainedEpochs: number;
+  showSaveSuccess: boolean;
+}
 
 export default function TrainingPanel({
   model,
@@ -22,7 +44,7 @@ export default function TrainingPanel({
   userTrainedModel,
   trainedEpochs,
   showSaveSuccess
-}) {
+}: TrainingPanelProps) {
   const [epochs, setEpochs] = useState(5);
   const [batchSize, setBatchSize] = useState(32);
   const [learningRate, setLearningRate] = useState(0.001);
@@ -96,7 +118,7 @@ export default function TrainingPanel({
         <label className="text-sm text-gray-400">Data Source</label>
         <div className="flex gap-2">
           <DisabledTooltip
-            message={loadDataDisabledReason}
+            message={loadDataDisabledReason || ''}
             show={!!loadDataDisabledReason}
             position="top"
           >
@@ -111,7 +133,7 @@ export default function TrainingPanel({
             </select>
           </DisabledTooltip>
           <DisabledTooltip
-            message={loadDataDisabledReason}
+            message={loadDataDisabledReason || ''}
             show={!!loadDataDisabledReason}
             position="top"
           >
@@ -153,7 +175,7 @@ export default function TrainingPanel({
       {/* Hyperparameters */}
       <div className="grid grid-cols-3 gap-3">
         <DisabledTooltip
-          message={isTraining ? 'Training in progress' : null}
+          message={isTraining ? 'Training in progress' : ''}
           show={isTraining}
           position="top"
         >
@@ -171,7 +193,7 @@ export default function TrainingPanel({
           </div>
         </DisabledTooltip>
         <DisabledTooltip
-          message={isTraining ? 'Training in progress' : null}
+          message={isTraining ? 'Training in progress' : ''}
           show={isTraining}
           position="top"
         >
@@ -189,7 +211,7 @@ export default function TrainingPanel({
           </div>
         </DisabledTooltip>
         <DisabledTooltip
-          message={isTraining ? 'Training in progress' : null}
+          message={isTraining ? 'Training in progress' : ''}
           show={isTraining}
           position="top"
         >
@@ -213,7 +235,7 @@ export default function TrainingPanel({
       <div className="flex gap-2">
         {!isTraining ? (
           <DisabledTooltip
-            message={trainDisabledReason}
+            message={trainDisabledReason || ''}
             show={!!trainDisabledReason}
             position="top"
           >
@@ -275,7 +297,7 @@ export default function TrainingPanel({
           <div className="w-full bg-gray-700 rounded-full h-2">
             <div
               className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(trainingProgress.batch / trainingProgress.totalBatches) * 100}%` }}
+              style={{ width: `${(trainingProgress.batch / (trainingProgress.totalBatches || 1)) * 100}%` }}
             />
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
-import { useModel } from './hooks/useModel';
+import { useModel, LayerOutput } from './hooks/useModel';
 import DrawingCanvas from './components/DrawingCanvas';
 import TrainingPanel from './components/TrainingPanel';
 import NetworkDiagram from './components/NetworkDiagram';
@@ -26,7 +26,6 @@ function App() {
     modelSource,
     modelName,
     trainedEpochs,
-    lastValAccuracy,
     // Actions
     initModel,
     loadData,
@@ -39,72 +38,72 @@ function App() {
     loadPretrained,
     getLayerOutputs
   } = useModel();
-  
-  const [prediction, setPrediction] = useState(null);
-  const [confidence, setConfidence] = useState(null);
-  const [allProbabilities, setAllProbabilities] = useState([]);
-  const [layerOutputs, setLayerOutputs] = useState({});
-  const [currentInput, setCurrentInput] = useState(null);
+
+  const [prediction, setPrediction] = useState<number | null>(null);
+  const [confidence, setConfidence] = useState<number | null>(null);
+  const [allProbabilities, setAllProbabilities] = useState<number[]>([]);
+  const [layerOutputs, setLayerOutputs] = useState<Record<string, LayerOutput>>({});
+  const [currentInput, setCurrentInput] = useState<tf.Tensor | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   const [selectedModelType, setSelectedModelType] = useState('untrained');
   const [isLoadingModel, setIsLoadingModel] = useState(false);
-  const [userTrainedModel, setUserTrainedModel] = useState(null); // Will store weights
+  const [userTrainedModel, setUserTrainedModel] = useState<boolean | null>(null); // Will store weights
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
-  
-  const inputTensorRef = useRef(null);
-  const savedWeightsRef = useRef(null);
-  
+
+  const inputTensorRef = useRef<tf.Tensor | null>(null);
+  const savedWeightsRef = useRef<tf.Tensor[] | null>(null);
+
   const handleSaveTrainedModel = useCallback(async () => {
     if (!model) return;
-    
+
     // Save current weights
     const weights = model.getWeights().map(w => w.clone());
     if (savedWeightsRef.current) {
       savedWeightsRef.current.forEach(w => w.dispose());
     }
     savedWeightsRef.current = weights;
-    setUserTrainedModel(true); 
+    setUserTrainedModel(true);
     setShowSaveSuccess(true);
     setTimeout(() => setShowSaveSuccess(false), 3000);
   }, [model]);
 
-  const handleImageReady = useCallback(async (tensor) => {
+  const handleImageReady = useCallback(async (tensor: tf.Tensor) => {
     setIsPredicting(true);
-    
+
     let activeModel = model;
     if (!activeModel) {
       // Initialize model if not exists
       activeModel = initModel(0.001);
     }
-    
+
     // Dispose previous tensor
     inputTensorRef.current?.dispose();
     inputTensorRef.current = tensor;
     setCurrentInput(tensor);
-    
+
     try {
       // Make prediction
-      const predictionTensor = predict(tensor) || (activeModel ? tf.tidy(() => activeModel.predict(tensor)) : null);
+      const predictionTensor = predict(tensor) || (activeModel ? tf.tidy(() => (activeModel as tf.LayersModel).predict(tensor) as tf.Tensor) : null);
       if (!predictionTensor) {
         setIsPredicting(false);
         return;
       }
-      
+
       const probs = await predictionTensor.data();
       const probsArray = Array.from(probs);
-      
+
       // Get predicted class
       const predictedClass = probsArray.indexOf(Math.max(...probsArray));
-      const conf = probsArray[predictedClass];
-      
+      const conf = probsArray[predictedClass] as number;
+
       setPrediction(predictedClass);
       setConfidence(conf);
       setAllProbabilities(probsArray);
-      
+
       // Get layer outputs for visualization
       const outputs = getLayerOutputs(tensor);
       setLayerOutputs(outputs);
-      
+
       predictionTensor.dispose();
     } catch (e) {
       console.error('Prediction error:', e);
@@ -112,31 +111,33 @@ function App() {
       setIsPredicting(false);
     }
   }, [model, predict, getLayerOutputs, initModel]);
-  
-  const handleInitModel = useCallback((learningRate) => {
+
+  const handleInitModel = useCallback((learningRate: number) => {
     const newModel = initModel(learningRate);
-    
+
     // If we have a pending input, make prediction
     if (inputTensorRef.current && newModel) {
       setTimeout(() => {
-        handleImageReady(inputTensorRef.current);
+        if (inputTensorRef.current) {
+          handleImageReady(inputTensorRef.current);
+        }
       }, 100);
     }
-    
+
     return newModel;
   }, [initModel, handleImageReady]);
-  
+
   // Handle model type selection change
-  const handleModelTypeChange = useCallback(async (modelType) => {
+  const handleModelTypeChange = useCallback(async (modelType: string) => {
     setSelectedModelType(modelType);
     setIsLoadingModel(true);
-    
+
     // Reset predictions when switching models
     setPrediction(null);
     setConfidence(null);
     setAllProbabilities([]);
     setLayerOutputs({});
-    
+
     try {
       if (modelType === 'untrained') {
         // Create a new untrained model
@@ -156,53 +157,7 @@ function App() {
       setIsLoadingModel(false);
     }
   }, [initModel, loadPretrained]);
-  
-  // Get model status display info
-  const getModelStatusInfo = () => {
-    if (!model) {
-      return {
-        status: 'No Model',
-        color: 'gray',
-        icon: null
-      };
-    }
-    
-    if (modelSource === 'pretrained') {
-      return {
-        status: 'Pre-trained',
-        name: 'MNIST CNN',
-        color: 'purple',
-        icon: null
-      };
-    }
-    
-    if (selectedModelType === 'user-saved') {
-      return {
-        status: 'Saved Model',
-        name: 'User Trained',
-        color: 'green',
-        icon: null
-      };
-    }
-    
-    if (modelSource === 'loaded') {
-      return {
-        status: 'Loaded',
-        name: modelName,
-        color: 'blue',
-        icon: null
-      };
-    }
-    
-    return {
-      status: trainedEpochs > 0 ? 'Trained' : 'Untrained',
-      color: trainedEpochs > 0 ? 'green' : 'yellow',
-      icon: null
-    };
-  };
-  
-  const modelStatus = getModelStatusInfo();
-  
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
@@ -216,7 +171,7 @@ function App() {
           </div>
         </div>
       </header>
-      
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -230,7 +185,7 @@ function App() {
                 </h2>
                 {isLoadingModel && <Spinner size="sm" />}
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm text-gray-400">Choose Active Model:</label>
@@ -257,18 +212,18 @@ function App() {
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   Draw a Digit
                 </h2>
-                <InfoTooltip 
+                <InfoTooltip
                   text="Draw a handwritten digit (0-9) using your mouse or touch. The model will try to recognize it. You can also upload an image file."
                   position="left"
                 />
               </div>
-              <DrawingCanvas 
-                onImageReady={handleImageReady} 
+              <DrawingCanvas
+                onImageReady={handleImageReady}
                 disabled={isTraining}
                 isPredicting={isPredicting}
               />
             </div>
-            
+
             {/* Prediction Result */}
             {prediction !== null && (
               <div className="bg-gray-800 rounded-xl p-4">
@@ -276,33 +231,33 @@ function App() {
                   <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     Prediction
                   </h2>
-                  <InfoTooltip 
+                  <InfoTooltip
                     text="Shows the model's prediction with confidence scores for each digit class (0-9). Higher bars indicate higher confidence."
                     position="left"
                   />
                 </div>
-                
+
                 {/* Model used indicator */}
                 <div className="mb-3 text-xs text-gray-500 flex items-center gap-1">
                   Using: {
                     selectedModelType === 'user-saved' ? 'My Saved Model' :
-                    modelSource === 'pretrained' ? 'Pre-trained MNIST CNN' : 
-                    modelSource === 'loaded' ? modelName || 'Loaded Model' : 
-                    trainedEpochs > 0 ? `Trained Model (${trainedEpochs} epochs)` : 
-                    'Untrained Model'
+                      modelSource === 'pretrained' ? 'Pre-trained MNIST CNN' :
+                        modelSource === 'loaded' ? modelName || 'Loaded Model' :
+                          trainedEpochs > 0 ? `Trained Model (${trainedEpochs} epochs)` :
+                            'Untrained Model'
                   }
                 </div>
-                
+
                 <div className="flex items-center gap-4 mb-4">
                   <div className="text-6xl font-bold text-blue-400">{prediction}</div>
                   <div className="flex-1">
                     <div className="text-sm text-gray-400">Confidence</div>
                     <div className="text-2xl font-semibold text-white">
-                      {(confidence * 100).toFixed(1)}%
+                      {((confidence || 0) * 100).toFixed(1)}%
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Probability bars */}
                 <div className="space-y-1">
                   {allProbabilities.map((prob, idx) => (
@@ -310,9 +265,8 @@ function App() {
                       <span className="text-xs text-gray-400 w-4">{idx}</span>
                       <div className="flex-1 bg-gray-700 rounded-full h-2">
                         <div
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            idx === prediction ? 'bg-blue-500' : 'bg-gray-500'
-                          }`}
+                          className={`h-2 rounded-full transition-all duration-300 ${idx === prediction ? 'bg-blue-500' : 'bg-gray-500'
+                            }`}
                           style={{ width: `${prob * 100}%` }}
                         />
                       </div>
@@ -324,7 +278,7 @@ function App() {
                 </div>
               </div>
             )}
-            
+
             {/* Model Controls */}
             <ModelControls
               model={model}
@@ -334,8 +288,24 @@ function App() {
               modelName={modelName}
             />
           </div>
-          
-          {/* Middle Column - Training & Network */}
+
+          {/* Middle Column - Visualizations */}
+          <div className="space-y-6">
+            <FeatureMapViewer
+              layerOutputs={layerOutputs}
+              title="Feature Maps / Activations"
+            />
+
+            <FilterViewer model={model} />
+
+            <CAMViewer
+              model={model}
+              inputTensor={currentInput}
+              prediction={prediction}
+            />
+          </div>
+
+          {/* Right Column - Training & Network */}
           <div className="space-y-6">
             <TrainingPanel
               model={model}
@@ -357,28 +327,13 @@ function App() {
               trainedEpochs={trainedEpochs}
               showSaveSuccess={showSaveSuccess}
             />
-            
+
             <NetworkDiagram modelSummary={modelSummary} />
           </div>
-          
-          {/* Right Column - Visualizations */}
-          <div className="space-y-6">
-            <FeatureMapViewer 
-              layerOutputs={layerOutputs} 
-              title="Feature Maps / Activations"
-            />
-            
-            <FilterViewer model={model} />
-            
-            <CAMViewer
-              model={model}
-              inputTensor={currentInput}
-              prediction={prediction}
-            />
-          </div>
+
         </div>
       </main>
-      
+
       {/* Footer */}
       <footer className="bg-gray-800 border-t border-gray-700 px-6 py-4 mt-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-sm text-gray-400">

@@ -10,21 +10,30 @@ const NUM_DATASET_ELEMENTS = 65000;
 const NUM_TRAIN_ELEMENTS = 55000;
 const NUM_TEST_ELEMENTS = NUM_DATASET_ELEMENTS - NUM_TRAIN_ELEMENTS;
 
+export interface MNISTData {
+  trainImages: tf.Tensor4D;
+  trainLabels: tf.Tensor2D;
+  testImages: tf.Tensor4D;
+  testLabels: tf.Tensor2D;
+  numTrain: number;
+  numTest: number;
+}
+
 /**
  * Load sample MNIST data (bundled, smaller subset for quick testing)
  */
-export async function loadSampleMNIST() {
+export async function loadSampleMNIST(): Promise<MNISTData> {
   try {
     const response = await fetch('/sample-mnist.json');
     const data = await response.json();
     
     // Flatten 2D images to 1D arrays, then create 4D tensor
-    const flattenImage = (img) => {
+    const flattenImage = (img: number[] | number[][]): number[] => {
       if (Array.isArray(img[0])) {
         // It's a 2D array, flatten it
-        return img.flat();
+        return (img as number[][]).flat();
       }
-      return img; // Already flat
+      return img as number[]; // Already flat
     };
     
     const trainImagesFlat = data.trainImages.map(flattenImage).flat();
@@ -45,11 +54,11 @@ export async function loadSampleMNIST() {
     const trainLabels = tf.oneHot(
       tf.tensor1d(data.trainLabels, 'int32'), 
       NUM_CLASSES
-    );
+    ) as tf.Tensor2D;
     const testLabels = tf.oneHot(
       tf.tensor1d(data.testLabels, 'int32'), 
       NUM_CLASSES
-    );
+    ) as tf.Tensor2D;
     
     return {
       trainImages,
@@ -68,13 +77,15 @@ export async function loadSampleMNIST() {
 /**
  * Load full MNIST dataset from CDN
  */
-export async function loadFullMNIST(onProgress) {
+export async function loadFullMNIST(onProgress?: (p: number) => void): Promise<MNISTData> {
   // Load images
   const img = new Image();
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  const imgRequest = new Promise((resolve, reject) => {
+  if (!ctx) throw new Error('Could not get 2D context');
+
+  const imgRequest = new Promise<Float32Array>((resolve, reject) => {
     img.crossOrigin = '';
     img.onload = () => {
       img.width = img.naturalWidth;
@@ -149,7 +160,7 @@ export async function loadFullMNIST(onProgress) {
 /**
  * Get a batch of data for training
  */
-export function getBatch(images, labels, batchSize, batchIndex) {
+export function getBatch(images: tf.Tensor4D, labels: tf.Tensor2D, batchSize: number, batchIndex: number) {
   const numExamples = images.shape[0];
   const startIndex = (batchIndex * batchSize) % numExamples;
   const endIndex = Math.min(startIndex + batchSize, numExamples);
@@ -163,7 +174,7 @@ export function getBatch(images, labels, batchSize, batchIndex) {
 /**
  * Shuffle data tensors
  */
-export function shuffleData(images, labels) {
+export function shuffleData(images: tf.Tensor4D, labels: tf.Tensor2D) {
   const numExamples = images.shape[0];
   const indices = tf.util.createShuffledIndices(numExamples);
   const indicesArray = Array.from(indices);

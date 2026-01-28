@@ -1,16 +1,26 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, ChangeEvent } from 'react';
+import * as tf from '@tensorflow/tfjs';
 import Spinner from './ui/Spinner';
 import InfoTooltip from './ui/InfoTooltip';
+import { ModelSource } from '../hooks/useModel';
 
-export default function ModelControls({ model, onSave, onLoad, modelSource, modelName }) {
-  const jsonInputRef = useRef(null);
-  const weightsInputRef = useRef(null);
-  const [jsonFile, setJsonFile] = useState(null);
-  const [weightsFiles, setWeightsFiles] = useState([]);
+interface ModelControlsProps {
+  model: tf.LayersModel | null;
+  onSave: (name: string) => Promise<void>;
+  onLoad: (jsonFile: File, weightsFiles: File[]) => Promise<tf.LayersModel>;
+  modelSource: ModelSource;
+  modelName: string | null;
+}
+
+export default function ModelControls({ model, onSave, onLoad }: ModelControlsProps) {
+  const jsonInputRef = useRef<HTMLInputElement>(null);
+  const weightsInputRef = useRef<HTMLInputElement>(null);
+  const [jsonFile, setJsonFile] = useState<File | null>(null);
+  const [weightsFiles, setWeightsFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   const handleDownload = async () => {
     if (!model) return;
@@ -31,7 +41,7 @@ export default function ModelControls({ model, onSave, onLoad, modelSource, mode
     }
   };
   
-  const handleJsonChange = (e) => {
+  const handleJsonChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setJsonFile(file);
@@ -39,7 +49,7 @@ export default function ModelControls({ model, onSave, onLoad, modelSource, mode
     }
   };
   
-  const handleWeightsChange = (e) => {
+  const handleWeightsChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
       setWeightsFiles(files);

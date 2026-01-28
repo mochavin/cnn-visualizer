@@ -3,7 +3,7 @@ import * as tf from '@tensorflow/tfjs';
 /**
  * Create the CNN model for MNIST digit classification
  */
-export function createModel() {
+export function createModel(): tf.Sequential {
   const model = tf.sequential();
   
   // First convolutional layer
@@ -79,7 +79,7 @@ export function createModel() {
 /**
  * Compile the model with optimizer and loss
  */
-export function compileModel(model, learningRate = 0.001) {
+export function compileModel(model: tf.LayersModel, learningRate: number = 0.001): tf.LayersModel {
   model.compile({
     optimizer: tf.train.adam(learningRate),
     loss: 'categoricalCrossentropy',
@@ -89,21 +89,37 @@ export function compileModel(model, learningRate = 0.001) {
   return model;
 }
 
+export interface LayerSummary {
+  index: number;
+  name: string;
+  type: string;
+  outputShape: number | number[];
+  params: number;
+  config: {
+    filters?: number;
+    kernelSize?: number | number[];
+    activation?: string;
+    units?: number;
+    rate?: number;
+    poolSize?: number | number[];
+  };
+}
+
 /**
  * Get model architecture summary as array
  */
-export function getModelSummary(model) {
-  const layers = [];
+export function getModelSummary(model: tf.LayersModel): LayerSummary[] {
+  const layers: LayerSummary[] = [];
   
   model.layers.forEach((layer, index) => {
-    const config = layer.getConfig();
-    const outputShape = layer.outputShape;
+    const config = layer.getConfig() as any;
+    const outputShape = layer.outputShape as (number | null)[];
     
     layers.push({
       index,
       name: layer.name,
       type: layer.getClassName(),
-      outputShape: Array.isArray(outputShape[0]) ? outputShape[0] : outputShape,
+      outputShape: (Array.isArray(outputShape[0]) ? outputShape[0] : outputShape) as number[],
       params: layer.countParams(),
       config: {
         filters: config.filters,
@@ -122,14 +138,14 @@ export function getModelSummary(model) {
 /**
  * Save model to browser downloads
  */
-export async function downloadModel(model, name = 'mnist-cnn') {
+export async function downloadModel(model: tf.LayersModel, name: string = 'mnist-cnn'): Promise<void> {
   await model.save(`downloads://${name}`);
 }
 
 /**
  * Load model from uploaded files
  */
-export async function loadModelFromFiles(jsonFile, weightsFiles) {
+export async function loadModelFromFiles(jsonFile: File, weightsFiles: File[]): Promise<tf.LayersModel> {
   const model = await tf.loadLayersModel(
     tf.io.browserFiles([jsonFile, ...weightsFiles])
   );
@@ -139,7 +155,7 @@ export async function loadModelFromFiles(jsonFile, weightsFiles) {
 /**
  * Load pre-trained model from public folder
  */
-export async function loadPretrainedModel() {
+export async function loadPretrainedModel(): Promise<tf.LayersModel> {
   const model = await tf.loadLayersModel('/pretrained-model/model.json');
   return model;
 }
@@ -147,7 +163,7 @@ export async function loadPretrainedModel() {
 /**
  * Get the number of trainable parameters
  */
-export function getTrainableParams(model) {
+export function getTrainableParams(model: tf.LayersModel): number {
   let total = 0;
   model.layers.forEach(layer => {
     total += layer.countParams();

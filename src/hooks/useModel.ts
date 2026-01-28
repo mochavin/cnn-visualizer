@@ -1,26 +1,50 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as tf from '@tensorflow/tfjs';
-import { createModel, compileModel, getModelSummary, downloadModel, loadModelFromFiles, loadPretrainedModel } from '../utils/modelUtils';
-import { loadSampleMNIST, loadFullMNIST, getBatch } from '../utils/mnistLoader';
+import { createModel, compileModel, getModelSummary, downloadModel, loadModelFromFiles, loadPretrainedModel, LayerSummary } from '../utils/modelUtils';
+import { loadSampleMNIST, loadFullMNIST, getBatch, MNISTData } from '../utils/mnistLoader';
+
+export interface TrainingProgress {
+  epoch: number;
+  batch: number;
+  totalBatches?: number;
+  loss: number;
+  accuracy: number;
+}
+
+export interface TrainingHistory {
+  loss: number[];
+  accuracy: number[];
+  valLoss: number[];
+  valAccuracy: number[];
+}
+
+export interface LayerOutput {
+  tensor: tf.Tensor;
+  shape: number[];
+  type: string;
+  index: number;
+}
+
+export type ModelSource = 'new' | 'loaded' | 'pretrained' | null;
 
 export function useModel() {
-  const [model, setModel] = useState(null);
+  const [model, setModel] = useState<tf.LayersModel | null>(null);
   const [isTraining, setIsTraining] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [trainingProgress, setTrainingProgress] = useState({ epoch: 0, batch: 0, loss: 0, accuracy: 0 });
-  const [trainingHistory, setTrainingHistory] = useState({ loss: [], accuracy: [], valLoss: [], valAccuracy: [] });
-  const [modelSummary, setModelSummary] = useState([]);
+  const [trainingProgress, setTrainingProgress] = useState<TrainingProgress>({ epoch: 0, batch: 0, loss: 0, accuracy: 0 });
+  const [trainingHistory, setTrainingHistory] = useState<TrainingHistory>({ loss: [], accuracy: [], valLoss: [], valAccuracy: [] });
+  const [modelSummary, setModelSummary] = useState<LayerSummary[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [dataLoadProgress, setDataLoadProgress] = useState(0);
   const [useFullDataset, setUseFullDataset] = useState(false);
   
   // Model metadata for tracking source and status
-  const [modelSource, setModelSource] = useState(null); // 'new' | 'loaded' | null
-  const [modelName, setModelName] = useState(null); // filename when loaded
+  const [modelSource, setModelSource] = useState<ModelSource>(null);
+  const [modelName, setModelName] = useState<string | null>(null);
   const [trainedEpochs, setTrainedEpochs] = useState(0); // cumulative epochs
-  const [lastValAccuracy, setLastValAccuracy] = useState(null); // last validation accuracy
+  const [lastValAccuracy, setLastValAccuracy] = useState<number | null>(null); // last validation accuracy
   
-  const dataRef = useRef(null);
+  const dataRef = useRef<MNISTData | null>(null);
   const stopTrainingRef = useRef(false);
   const pauseTrainingRef = useRef(false);
   
@@ -44,7 +68,7 @@ export function useModel() {
     setDataLoadProgress(0);
     
     try {
-      let data;
+      let data: MNISTData;
       if (useFull) {
         data = await loadFullMNIST((progress) => setDataLoadProgress(progress));
       } else {
@@ -64,12 +88,19 @@ export function useModel() {
   }, []);
   
   // Train model
-  const train = useCallback(async (options = {}) => {
+  const train = useCallback(async (options: {
+    epochs?: number;
+    batchSize?: number;
+    learningRate?: number;
+    validationSplit?: number;
+    onEpochEnd?: (metrics: any) => void;
+    onBatchEnd?: (metrics: any) => void;
+    modelOverride?: tf.LayersModel | null;
+  } = {}) => {
     const {
       epochs = 10,
       batchSize = 32,
       learningRate = 0.001,
-      validationSplit = 0.1,
       onEpochEnd,
       onBatchEnd,
       modelOverride = null
@@ -93,7 +124,7 @@ export function useModel() {
     const { trainImages, trainLabels, testImages, testLabels, numTrain } = dataRef.current;
     const numBatches = Math.ceil(numTrain / batchSize);
     
-    const history = { loss: [], accuracy: [], valLoss: [], valAccuracy: [] };
+    const history: TrainingHistory = { loss: [], accuracy: [], valLoss: [], valAccuracy: [] };
     let completedEpochs = 0;
     
     for (let epoch = 0; epoch < epochs; epoch++) {
@@ -152,7 +183,7 @@ export function useModel() {
       if (stopTrainingRef.current) break;
       
       // Calculate validation metrics
-      const valResult = activeModel.evaluate(testImages, testLabels);
+      const valResult = activeModel.evaluate(testImages, testLabels) as tf.Scalar[];
       const valLoss = (await valResult[0].data())[0];
       const valAcc = (await valResult[1].data())[0];
       valResult[0].dispose();
@@ -206,11 +237,11 @@ export function useModel() {
   }, []);
   
   // Predict
-  const predict = useCallback((inputTensor) => {
+  const predict = useCallback((inputTensor: tf.Tensor) => {
     if (!model) return null;
     
     return tf.tidy(() => {
-      const prediction = model.predict(inputTensor);
+      const prediction = model.predict(inputTensor) as tf.Tensor;
       return prediction;
     });
   }, [model]);
@@ -222,7 +253,7 @@ export function useModel() {
   }, [model]);
   
   // Load model from files
-  const loadModel = useCallback(async (jsonFile, weightsFiles) => {
+  const loadModel = useCallback(async (jsonFile: File, weightsFiles: File[]) => {
     try {
       const loadedModel = await loadModelFromFiles(jsonFile, weightsFiles);
       compileModel(loadedModel);
@@ -266,24 +297,25 @@ export function useModel() {
   }, []);
   
   // Get intermediate layer outputs for visualization
-  const getLayerOutputs = useCallback((inputTensor) => {
+  const getLayerOutputs = useCallback((inputTensor: tf.Tensor) => {
     if (!model) return {};
     
-    const outputs = {};
+    const outputs: Record<string, LayerOutput> = {};
     
     model.layers.forEach((layer, index) => {
-      if (layer.getClassName() === 'Conv2D' || layer.getClassName() === 'MaxPooling2D') {
+      const layerType = layer.getClassName();
+      if (layerType === 'Conv2D' || layerType === 'MaxPooling2D' || layerType === 'Flatten' || layerType === 'Dense') {
         try {
           const intermediateModel = tf.model({
             inputs: model.inputs,
-            outputs: layer.output
+            outputs: layer.output as tf.SymbolicTensor
           });
           
-          const output = intermediateModel.predict(inputTensor);
+          const output = intermediateModel.predict(inputTensor) as tf.Tensor;
           outputs[layer.name] = {
             tensor: output,
             shape: output.shape,
-            type: layer.getClassName(),
+            type: layerType,
             index
           };
         } catch (e) {
@@ -296,7 +328,7 @@ export function useModel() {
   }, [model]);
   
   // Get filter weights
-  const getFilterWeights = useCallback((layerName) => {
+  const getFilterWeights = useCallback((layerName: string) => {
     if (!model) return null;
     
     try {
@@ -311,12 +343,18 @@ export function useModel() {
     }
   }, [model]);
   
-  // Cleanup on unmount
+  // Cleanup model when it changes (dispose old model)
   useEffect(() => {
     return () => {
       if (model) {
         model.dispose();
       }
+    };
+  }, [model]);
+
+  // Cleanup data only on unmount
+  useEffect(() => {
+    return () => {
       if (dataRef.current) {
         dataRef.current.trainImages?.dispose();
         dataRef.current.trainLabels?.dispose();

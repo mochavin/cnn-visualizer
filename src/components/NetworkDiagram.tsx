@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import InfoTooltip from './ui/InfoTooltip';
+import { LayerSummary } from '../utils/modelUtils';
 
-export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
-  const [hoveredLayer, setHoveredLayer] = useState(null);
+interface NetworkDiagramProps {
+  modelSummary: LayerSummary[];
+  activeLayer?: string | null;
+}
+
+export default function NetworkDiagram({ modelSummary, activeLayer = null }: NetworkDiagramProps) {
+  const [hoveredLayer, setHoveredLayer] = useState<string | null>(null);
   
   if (!modelSummary || modelSummary.length === 0) {
     return (
@@ -21,7 +27,7 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
     );
   }
   
-  const getLayerColor = (type) => {
+  const getLayerColor = (type: string) => {
     switch (type) {
       case 'Conv2D': return 'bg-blue-500 border-blue-400 hover:bg-blue-500';
       case 'MaxPooling2D': return 'bg-purple-500 border-purple-400 hover:bg-purple-500';
@@ -32,59 +38,25 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
     }
   };
   
-  const getLayerIcon = (type) => {
-    switch (type) {
-      case 'Conv2D':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-          </svg>
-        );
-      case 'MaxPooling2D':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-        );
-      case 'Flatten':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        );
-      case 'Dense':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-        );
-      case 'Dropout':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-          </svg>
-        );
-      default:
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-        );
-    }
-  };
-  
-  const formatShape = (shape) => {
+  const formatShape = (shape: number | number[]) => {
     if (!shape) return '';
+    if (typeof shape === 'number') return shape.toString();
     return shape.filter(s => s !== null).join(' x ');
   };
   
-  const getLayerDetails = (layer) => {
+  const getLayerDetails = (layer: LayerSummary) => {
     const config = layer.config;
     const details = [];
     
     if (config.filters) details.push(`${config.filters} filters`);
-    if (config.kernelSize) details.push(`${config.kernelSize.join('x')} kernel`);
-    if (config.poolSize) details.push(`${config.poolSize.join('x')} pool`);
+    if (config.kernelSize) {
+      const ks = Array.isArray(config.kernelSize) ? config.kernelSize.join('x') : config.kernelSize;
+      details.push(`${ks} kernel`);
+    }
+    if (config.poolSize) {
+      const ps = Array.isArray(config.poolSize) ? config.poolSize.join('x') : config.poolSize;
+      details.push(`${ps} pool`);
+    }
     if (config.units) details.push(`${config.units} units`);
     if (config.rate) details.push(`${(config.rate * 100).toFixed(0)}% dropout`);
     if (config.activation) details.push(config.activation);
@@ -93,17 +65,17 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
   };
   
   // Detailed layer descriptions
-  const getLayerDescription = (layer) => {
+  const getLayerDescription = (layer: LayerSummary) => {
     const config = layer.config;
     
     switch (layer.type) {
       case 'Conv2D':
         return {
           title: 'Convolutional Layer',
-          description: `Applies ${config.filters} learnable filters (${config.kernelSize?.join('x') || '3x3'}) across the input to detect spatial patterns like edges, textures, and shapes.`,
+          description: `Applies ${config.filters} learnable filters (${Array.isArray(config.kernelSize) ? config.kernelSize.join('x') : (config.kernelSize || '3x3')}) across the input to detect spatial patterns like edges, textures, and shapes.`,
           details: [
             { label: 'Filters', value: config.filters },
-            { label: 'Kernel Size', value: config.kernelSize?.join(' x ') },
+            { label: 'Kernel Size', value: Array.isArray(config.kernelSize) ? config.kernelSize.join(' x ') : config.kernelSize },
             { label: 'Activation', value: config.activation || 'linear' },
             { label: 'Output Shape', value: formatShape(layer.outputShape) },
             { label: 'Parameters', value: layer.params.toLocaleString() }
@@ -112,9 +84,9 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
       case 'MaxPooling2D':
         return {
           title: 'Max Pooling Layer',
-          description: `Reduces spatial dimensions by taking the maximum value in each ${config.poolSize?.join('x') || '2x2'} region. Makes the network more robust to small translations.`,
+          description: `Reduces spatial dimensions by taking the maximum value in each ${Array.isArray(config.poolSize) ? config.poolSize.join('x') : (config.poolSize || '2x2')} region. Makes the network more robust to small translations.`,
           details: [
-            { label: 'Pool Size', value: config.poolSize?.join(' x ') },
+            { label: 'Pool Size', value: Array.isArray(config.poolSize) ? config.poolSize.join(' x ') : config.poolSize },
             { label: 'Output Shape', value: formatShape(layer.outputShape) },
             { label: 'Parameters', value: '0 (no learnable params)' }
           ]
@@ -143,9 +115,9 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
       case 'Dropout':
         return {
           title: 'Dropout Layer',
-          description: `Randomly sets ${(config.rate * 100).toFixed(0)}% of inputs to zero during training. Prevents overfitting by forcing the network to learn redundant representations.`,
+          description: `Randomly sets ${((config.rate || 0) * 100).toFixed(0)}% of inputs to zero during training. Prevents overfitting by forcing the network to learn redundant representations.`,
           details: [
-            { label: 'Dropout Rate', value: `${(config.rate * 100).toFixed(0)}%` },
+            { label: 'Dropout Rate', value: `${((config.rate || 0) * 100).toFixed(0)}%` },
             { label: 'Output Shape', value: formatShape(layer.outputShape) },
             { label: 'Note', value: 'Only active during training' }
           ]
@@ -224,7 +196,7 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
               
               {/* Tooltip on hover */}
               {isHovered && (
-                <div className="absolute left-full ml-4 top-0 z-50 w-72 bg-gray-900 border border-gray-600 rounded-lg shadow-xl p-3 text-sm">
+                <div className="absolute right-full ml-4 top-0 z-50 w-72 bg-gray-900 border border-gray-600 rounded-lg shadow-xl p-3 text-sm">
                   <div className="font-semibold text-white mb-1">{layerInfo.title}</div>
                   <p className="text-gray-300 text-xs mb-2">{layerInfo.description}</p>
                   <div className="space-y-1 border-t border-gray-700 pt-2">
@@ -236,7 +208,7 @@ export default function NetworkDiagram({ modelSummary, activeLayer = null }) {
                     ))}
                   </div>
                   {/* Arrow */}
-                  <div className="absolute right-full top-4 w-0 h-0 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent border-r-gray-900" />
+                  <div className="absolute left-full top-4 w-0 h-0 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-gray-900" />
                 </div>
               )}
               

@@ -1,22 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import InfoTooltip from './ui/InfoTooltip';
 
-export default function CAMViewer({ model, inputTensor, prediction }) {
-  const canvasRef = useRef(null);
-  const overlayCanvasRef = useRef(null);
-  const [camReady, setCamReady] = useState(false);
+interface CAMViewerProps {
+  model: tf.LayersModel | null;
+  inputTensor: tf.Tensor | null;
+  prediction: number | null;
+}
+
+export default function CAMViewer({ model, inputTensor, prediction }: CAMViewerProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
     if (!model || !inputTensor || prediction === null || prediction === undefined) {
-      setCamReady(false);
       return;
     }
     
     const computeCAM = async () => {
       try {
         // Find the last conv layer
-        let lastConvLayer = null;
+        let lastConvLayer: tf.layers.Layer | null = null;
         for (let i = model.layers.length - 1; i >= 0; i--) {
           if (model.layers[i].getClassName() === 'Conv2D') {
             lastConvLayer = model.layers[i];
@@ -29,24 +33,16 @@ export default function CAMViewer({ model, inputTensor, prediction }) {
           return;
         }
         
-        // Create a model that outputs the conv layer activations and the predictions
+        // Create a model that outputs the conv layer activations
         const convOutputModel = tf.model({
           inputs: model.inputs,
-          outputs: lastConvLayer.output
+          outputs: lastConvLayer.output as tf.SymbolicTensor
         });
         
         // Get conv layer output
-        const convOutput = convOutputModel.predict(inputTensor);
-        const convOutputData = convOutput.arraySync()[0]; // [height, width, filters]
-        
-        // Get the weights from the last dense layer (before softmax)
-        const outputLayer = model.layers[model.layers.length - 1];
-        const denseWeights = outputLayer.getWeights()[0].arraySync(); // [input_features, num_classes]
-        
-        // Find the flatten layer to understand the mapping
-        const flattenIndex = model.layers.findIndex(l => l.getClassName() === 'Flatten');
-        const beforeFlatten = model.layers[flattenIndex - 1];
-        const beforeFlattenShape = beforeFlatten.outputShape; // [null, h, w, filters]
+        const convOutput = convOutputModel.predict(inputTensor) as tf.Tensor;
+        const convOutputArray = await convOutput.array() as number[][][][];
+        const convOutputData = convOutputArray[0]; // [height, width, filters]
         
         const convHeight = convOutputData.length;
         const convWidth = convOutputData[0].length;
@@ -54,7 +50,7 @@ export default function CAMViewer({ model, inputTensor, prediction }) {
         
         // Simple CAM: weight each activation map by the corresponding weight for the predicted class
         // This is a simplified version - full Grad-CAM would use gradients
-        const cam = Array(convHeight).fill(0).map(() => Array(convWidth).fill(0));
+        const cam: number[][] = Array(convHeight).fill(0).map(() => Array(convWidth).fill(0));
         
         // For each spatial location, sum weighted activations
         for (let y = 0; y < convHeight; y++) {
@@ -82,11 +78,14 @@ export default function CAMViewer({ model, inputTensor, prediction }) {
         
         // Draw original image
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         canvas.width = 28;
         canvas.height = 28;
         
-        const inputData = inputTensor.arraySync()[0];
+        const inputArray = await inputTensor.array() as number[][][][];
+        const inputData = inputArray[0];
         const imageData = ctx.createImageData(28, 28);
         
         for (let y = 0; y < 28; y++) {
@@ -103,7 +102,9 @@ export default function CAMViewer({ model, inputTensor, prediction }) {
         
         // Draw CAM overlay
         const overlayCanvas = overlayCanvasRef.current;
+        if (!overlayCanvas) return;
         const overlayCtx = overlayCanvas.getContext('2d');
+        if (!overlayCtx) return;
         overlayCanvas.width = 28;
         overlayCanvas.height = 28;
         
@@ -141,11 +142,8 @@ export default function CAMViewer({ model, inputTensor, prediction }) {
         // Cleanup
         convOutput.dispose();
         
-        setCamReady(true);
-        
       } catch (e) {
         console.error('Failed to compute CAM:', e);
-        setCamReady(false);
       }
     };
     

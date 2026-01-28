@@ -1,4 +1,9 @@
-export default function Spinner({ size = 'md', className = '' }) {
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+export default function Spinner({ size = 'md', className = '' }: SpinnerProps) {
   const sizeClasses = {
     sm: 'h-3 w-3',
     md: 'h-4 w-4',

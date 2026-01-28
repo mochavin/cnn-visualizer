@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
+import * as tf from '@tensorflow/tfjs';
 import { drawToCanvas } from '../utils/visualizationUtils';
 import InfoTooltip from './ui/InfoTooltip';
 
-export default function FilterViewer({ model, selectedLayer = null }) {
-  const containerRef = useRef(null);
-  const [availableLayers, setAvailableLayers] = useState([]);
-  const [currentLayer, setCurrentLayer] = useState(selectedLayer);
+interface FilterViewerProps {
+  model: tf.LayersModel | null;
+  selectedLayer?: string | null;
+}
+
+export default function FilterViewer({ model, selectedLayer = null }: FilterViewerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [availableLayers, setAvailableLayers] = useState<string[]>([]);
+  const [currentLayer, setCurrentLayer] = useState<string | null>(selectedLayer);
   
   // Get available conv layers
   useEffect(() => {
@@ -37,7 +43,7 @@ export default function FilterViewer({ model, selectedLayer = null }) {
     try {
       const layer = model.getLayer(currentLayer);
       const weights = layer.getWeights()[0]; // [height, width, inChannels, outChannels]
-      const weightsData = weights.arraySync();
+      const weightsData = weights.arraySync() as number[][][][];
       
       const [height, width, inChannels, outChannels] = weights.shape;
       
@@ -50,7 +56,7 @@ export default function FilterViewer({ model, selectedLayer = null }) {
         filterDiv.className = 'flex flex-col items-center';
         
         // For multi-channel inputs, average across input channels
-        const filterData = [];
+        const filterData: number[][] = [];
         for (let y = 0; y < height; y++) {
           filterData[y] = [];
           for (let x = 0; x < width; x++) {

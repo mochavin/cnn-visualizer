@@ -1,10 +1,16 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, MouseEvent, TouchEvent, ChangeEvent } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import Spinner from './ui/Spinner';
 import DisabledTooltip from './ui/DisabledTooltip';
 
-export default function DrawingCanvas({ onImageReady, disabled = false, isPredicting = false }) {
-  const canvasRef = useRef(null);
+interface DrawingCanvasProps {
+  onImageReady: (tensor: tf.Tensor) => void;
+  disabled?: boolean;
+  isPredicting?: boolean;
+}
+
+export default function DrawingCanvas({ onImageReady, disabled = false, isPredicting = false }: DrawingCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   
@@ -28,6 +34,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 20;
@@ -37,7 +44,9 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
     // Set black background once on mount
     ctx.fillStyle = 'black';
@@ -47,8 +56,9 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
     setupContext();
   }, [setupContext]);
   
-  const getCoordinates = useCallback((e) => {
+  const getCoordinates = useCallback((e: MouseEvent | TouchEvent | any) => {
     const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     
     let clientX, clientY;
@@ -70,12 +80,14 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
     };
   }, []);
   
-  const startDrawing = useCallback((e) => {
+  const startDrawing = useCallback((e: MouseEvent | TouchEvent) => {
     if (disabled) return;
     e.preventDefault();
     
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     const { x, y } = getCoordinates(e);
     
     // Re-setup context to ensure properties persist
@@ -86,12 +98,14 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
     setIsDrawing(true);
   }, [disabled, getCoordinates, setupContext]);
   
-  const draw = useCallback((e) => {
+  const draw = useCallback((e: MouseEvent | TouchEvent) => {
     if (!isDrawing || disabled) return;
     e.preventDefault();
     
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     const { x, y } = getCoordinates(e);
     
     ctx.lineTo(x, y);
@@ -99,7 +113,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
     setHasDrawn(true);
   }, [isDrawing, disabled, getCoordinates]);
   
-  const stopDrawing = useCallback((e) => {
+  const stopDrawing = useCallback((e?: MouseEvent | TouchEvent) => {
     if (e) {
       if (typeof e.preventDefault === 'function') e.preventDefault();
     }
@@ -108,7 +122,9 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
   
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -121,12 +137,14 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
   
   const getImageTensor = useCallback(() => {
     const canvas = canvasRef.current;
+    if (!canvas) throw new Error('Canvas not found');
     
     // Create a temporary canvas for downscaling
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 28;
     tempCanvas.height = 28;
     const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) throw new Error('Could not get 2D context');
     
     // Draw scaled down image
     tempCtx.drawImage(canvas, 0, 0, 28, 28);
@@ -157,7 +175,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
   }, [hasDrawn, isPredicting, getImageTensor, onImageReady]);
   
   // Handle file upload
-  const handleImageUpload = useCallback((e) => {
+  const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -166,7 +184,9 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
       const img = new Image();
       img.onload = () => {
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         
         // Clear canvas
         ctx.fillStyle = 'black';
@@ -186,7 +206,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
           onImageReady(tensor);
         }
       };
-      img.src = event.target.result;
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   }, [getImageTensor, onImageReady]);
@@ -195,7 +215,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
     <div className="flex flex-col gap-3">
       {/* Canvas container with fixed dimensions for proper centering */}
       <DisabledTooltip 
-        message={disabledReason}
+        message={disabledReason || ''}
         show={!!disabledReason}
         position="top"
       >
@@ -226,7 +246,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
       
       <div className="flex gap-2">
         <DisabledTooltip 
-          message={predictDisabledReason}
+          message={predictDisabledReason || ''}
           show={!!predictDisabledReason}
           position="top"
         >
@@ -246,7 +266,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
           </button>
         </DisabledTooltip>
         <DisabledTooltip 
-          message={disabledReason}
+          message={disabledReason || ''}
           show={!!disabledReason}
           position="top"
         >
@@ -261,7 +281,7 @@ export default function DrawingCanvas({ onImageReady, disabled = false, isPredic
       </div>
       
       <DisabledTooltip 
-        message={disabledReason}
+        message={disabledReason || ''}
         show={!!disabledReason}
         position="top"
       >

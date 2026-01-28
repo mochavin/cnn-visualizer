@@ -1,16 +1,21 @@
 import { useState } from 'react';
 
-export default function InfoTooltip({ text, position = 'top' }) {
+interface InfoTooltipProps {
+  text: string;
+  position?: 'top' | 'bottom' | 'left' | 'right';
+}
+
+export default function InfoTooltip({ text, position = 'top' }: InfoTooltipProps) {
   const [show, setShow] = useState(false);
 
-  const positionClasses = {
+  const positionClasses: Record<'top' | 'bottom' | 'left' | 'right', string> = {
     top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
     bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
     left: 'right-full top-1/2 -translate-y-1/2 mr-2',
     right: 'left-full top-1/2 -translate-y-1/2 ml-2'
   };
 
-  const arrowClasses = {
+  const arrowClasses: Record<'top' | 'bottom' | 'left' | 'right', string> = {
     top: 'top-full left-1/2 -translate-x-1/2 border-t-gray-700 border-x-transparent border-b-transparent',
     bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-gray-700 border-x-transparent border-t-transparent',
     left: 'left-full top-1/2 -translate-y-1/2 border-l-gray-700 border-y-transparent border-r-transparent',
