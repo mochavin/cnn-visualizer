@@ -1,6 +1,8 @@
 # CNN Visualizer
 
+<img width="1396" height="1080" alt="image" src="https://github.com/user-attachments/assets/0f807c7a-4077-49b5-ad19-37593d69260b" />
 An interactive web application for training and visualizing Convolutional Neural Networks (CNNs) directly in your browser. Built with TensorFlow.js, React, and TypeScript.
+
 
 ## Overview
 
