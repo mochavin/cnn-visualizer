@@ -24,7 +24,7 @@ export interface MNISTData {
  */
 export async function loadSampleMNIST(): Promise<MNISTData> {
   try {
-    const response = await fetch('/sample-mnist.json');
+    const response = await fetch(`${import.meta.env.BASE_URL}sample-mnist.json`);
     const data = await response.json();
     
     // Flatten 2D images to 1D arrays, then create 4D tensor

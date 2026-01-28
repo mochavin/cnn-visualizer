@@ -156,7 +156,7 @@ export async function loadModelFromFiles(jsonFile: File, weightsFiles: File[]): 
  * Load pre-trained model from public folder
  */
 export async function loadPretrainedModel(): Promise<tf.LayersModel> {
-  const model = await tf.loadLayersModel('/pretrained-model/model.json');
+  const model = await tf.loadLayersModel(`${import.meta.env.BASE_URL}pretrained-model/model.json`);
   return model;
 }
 
